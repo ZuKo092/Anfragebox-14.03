@@ -104,6 +104,7 @@
       openPdfForLead, openEditModalForSelected, saveEditModal, navigate: setActiveNav,
       getPayload, customerName, customerEmail, customerPhone, getAddr,
       normalizeStatus, escapeHtml, formatEuro, formatDT, formatDate,
+      loadPortalList,
     });
   }
 
@@ -1155,10 +1156,10 @@ const photoReminderKey="ab_photo_reminder_"+leadId; const lastPhotoReminder=loca
 
   async function createPortalLink(leadId) {
     if (!STATE.sb||!STATE.companyId||!leadId) { showNotice("Fehler: Keine Verbindung.","err"); return null; }
-    const {data:existing}=await STATE.sb.from("portal_tokens").select("token").eq("lead_id",leadId).eq("company_id",STATE.companyId).eq("is_active",true).gt("expires_at",new Date().toISOString()).maybeSingle();
+    const {data:existing}=await STATE.sb.from("portal_tokens").select("token").eq("lead_id",leadId).eq("company_id",STATE.companyId).eq("is_active",true).or(`expires_at.gt.${new Date().toISOString()},expires_at.is.null`).maybeSingle();
     if (existing?.token) return `${window.location.origin}/portal/${existing.token}`;
     const token=generatePortalToken();
-    const {error}=await STATE.sb.from("portal_tokens").insert({company_id:STATE.companyId,lead_id:leadId,token:token,created_by:STATE.user?.id||null});
+    const {error}=await STATE.sb.from("portal_tokens").insert({company_id:STATE.companyId,lead_id:leadId,token:token,created_by:STATE.user?.id||null,expires_at:new Date(Date.now()+90*24*60*60*1000).toISOString()});
     if (error) { showNotice("Portal-Link Fehler: "+(error.message||error),"err"); return null; }
     return `${window.location.origin}/portal/${token}`;
   }
